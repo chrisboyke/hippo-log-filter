@@ -5,7 +5,7 @@ hippo_log_filter.py
 Filter the log output from hippo CMS to make it more readable & colorize
 different log-levels (INFO, WARN, ERROR, etc.)
 
-Usage:  
+Usage:
     mvn -Pcargo.run | hippo_log_filter.py
 
 Author:
@@ -17,6 +17,7 @@ from colorama import Fore, Style
 
 VERBOSE = False
 WRITE_UNFILTERED=True
+MAX_STACK=10
 
 # Try to clean up junk in the log file
 bad_strings = {'[WARNING] [talledLocalContainer] %d{HH:mm:ss} WARN' : '[WARNING]',
@@ -46,9 +47,13 @@ def main():
     print('hippo_log_filter.py version 1.1 Author chris.boyke@bloomreach.com')
     print('-----------------------------------------------------------------\n\n' + Style.RESET_ALL)
 
+    if len(sys.argv) > 1:
+        print("\x1B]0;%s\x07" % sys.argv[1])
     if WRITE_UNFILTERED:
         f = open('unfiltered.out','w')
 
+    prev_type=None
+    stack_lines=0
     for line in sys.stdin:
         verbose('original')
         verbose(line)
@@ -64,59 +69,65 @@ def main():
                 verbose('removing',b)
                 line = line.replace(b,bad_strings[b])
 
-        m = re.match(dtpattern,line)
-        if m:
-            verbose('match dtpattern')
-            time = m.group(1)
-            type = m.group(2)
-            line = m.group(3)
+        if prev_type in ['ERROR', 'SEVERE', 'WARNING'] and ( '.Fault' in line or 'Exception' in line or '\tat' in line):
+            type = prev_type
+            in_stack = True
+            stack_lines += 1
         else:
-            m = re.match(dtpattern2,line)
+            stack_lines = 0
+            m = re.match(dtpattern,line)
             if m:
-                verbose('match dtpattern2')
+                verbose('match dtpattern')
                 time = m.group(1)
                 type = m.group(2)
                 line = m.group(3)
             else:
-                m = re.match(timepattern,line)
+                m = re.match(dtpattern2,line)
                 if m:
-                    verbose('match timepattern')
+                    verbose('match dtpattern2')
                     time = m.group(1)
                     type = m.group(2)
                     line = m.group(3)
                 else:
-                    m = re.match(oepattern,line)
+                    m = re.match(timepattern,line)
                     if m:
-                        verbose('match oepattern')
+                        verbose('match timepattern')
                         time = m.group(1)
                         type = m.group(2)
                         line = m.group(3)
                     else:
-                        m = re.match(nodtpattern,line)
+                        m = re.match(oepattern,line)
                         if m:
-                            verbose('match nodtpattern')
-                            type = m.group(1)
-                            line = m.group(2)
+                            verbose('match oepattern')
+                            time = m.group(1)
+                            type = m.group(2)
+                            line = m.group(3)
                         else:
-                            verbose('no match')
+                            m = re.match(nodtpattern,line)
+                            if m:
+                                verbose('match nodtpattern')
+                                type = m.group(1)
+                                line = m.group(2)
+                            else:
+                                verbose('no match')
 
         color = Fore.BLACK
         if type == 'INFO':
             color = Fore.GREEN
+        elif type == 'WARN' or type == 'WARNING':
+            type = 'WARNING'
+            color = Style.BRIGHT + Fore.YELLOW
+        elif type == 'ERROR' or type == 'SEVERE':
+            color = Fore.RED
         else:
-            if type == 'WARN' or type == 'WARNING':
-                color = Style.BRIGHT + Fore.YELLOW
-            else:
-                if type == 'ERROR':
-                    color = Fore.RED
-                else:
-                    color = Fore.BLUE
+            color = Fore.BLUE
 
         line = line.strip()
         if time:
             time = ' ' + time
-        if line:
+        if line and stack_lines < MAX_STACK:
             print(color + '[' + type + ']'  + Style.RESET_ALL + time + ' ' + line)
+        prev_type=type
 
 
 def verbose(*args):
