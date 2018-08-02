@@ -126,7 +126,7 @@ def main():
         if time:
             time = ' ' + time
         if line and stack_lines < MAX_STACK:
-            print(color + '[' + type + ']'  + Style.RESET_ALL + time + ' ' + line)
+            print(color + '[' + type + ']'  + Style.RESET_ALL + time + ' ' + line, flush=True)
         prev_type=type
 
 
