@@ -16,7 +16,7 @@ import sys, re
 from colorama import Fore, Style
 
 VERBOSE = False
-WRITE_UNFILTERED=True
+WRITE_UNFILTERED=False
 MAX_STACK=10
 
 # Try to clean up junk in the log file
@@ -45,12 +45,12 @@ oepattern=r'\[\d\d\d\d-\d\d-\d\dT(\d\d:\d\d\:\d\d,\d\d\d)\]\[(\w+)\s*\]\s*(.*)'
 def main():
     print('\n\n' + Fore.GREEN)
     print('hippo_log_filter.py version 1.1 Author chris.boyke@bloomreach.com')
-    print('-----------------------------------------------------------------\n\n' + Style.RESET_ALL)
+    print('-----------------------------------------------------------------\n\n' + Style.RESET_ALL, flush=True)
 
     if len(sys.argv) > 1:
         print("\x1B]0;%s\x07" % sys.argv[1])
     if WRITE_UNFILTERED:
-        f = open('unfiltered.out','w')
+        f = open('log/unfiltered.out','w')
 
     prev_type=None
     stack_lines=0
@@ -69,7 +69,8 @@ def main():
                 verbose('removing',b)
                 line = line.replace(b,bad_strings[b])
 
-        if prev_type in ['ERROR', 'SEVERE', 'WARNING'] and ( '.Fault' in line or 'Exception' in line or '\tat' in line):
+        # Let's try to make stack traces slightly more readable
+        if prev_type in ['ERROR', 'SEVERE', 'WARNING'] and ( '.Fault' in line or 'Exception' in line or ('\tat ' in line or ' at ' in line)):
             type = prev_type
             in_stack = True
             stack_lines += 1
@@ -126,7 +127,12 @@ def main():
         if time:
             time = ' ' + time
         if line and stack_lines < MAX_STACK:
-            print(color + '[' + type + ']'  + Style.RESET_ALL + time + ' ' + line, flush=True)
+            line = color + '[' + type + ']'  + Style.RESET_ALL + time + ' ' + line
+            if '\r' in line:
+                line = line.replace('\r','')
+                print(line,end='',flush=True)
+            else:
+                print(line,flush=True)
         prev_type=type
 
 
