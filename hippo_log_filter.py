@@ -8,8 +8,6 @@ different log-levels (INFO, WARN, ERROR, etc.)
 Usage:
     mvn -Pcargo.run | hippo_log_filter.py
 
-Author:
-    Chris Boyke chris.boyke@bloomreach.com
 
 '''
 import sys, re
@@ -22,6 +20,8 @@ MAX_STACK=10
 # Try to clean up junk in the log file
 bad_strings = {'[WARNING] [talledLocalContainer] %d{HH:mm:ss} WARN' : '[WARNING]',
                '[INFO] [talledLocalContainer]' : ''}
+
+bad_patterns = { r'http-nio-8080-exec-\d+\s*' : ''}
 
 # Hippo uses a variety of open-source packages, each of which specifies its own
 # log output format, so we try to parse the most common variants, and re-format
@@ -44,8 +44,8 @@ oepattern=r'\[\d\d\d\d-\d\d-\d\dT(\d\d:\d\d\:\d\d,\d\d\d)\]\[(\w+)\s*\]\s*(.*)'
 
 def main():
     print('\n\n' + Fore.GREEN)
-    print('hippo_log_filter.py version 1.1 Author chris.boyke@bloomreach.com')
-    print('-----------------------------------------------------------------\n\n' + Style.RESET_ALL, flush=True)
+    print('hippo_log_filter.py version 1.2 (https://code.onehippo.org/sandbox/hippo-log-filter)')
+    print('------------------------------------------------------------------------------------\n\n' + Style.RESET_ALL, flush=True)
 
     if len(sys.argv) > 1:
         print("\x1B]0;%s\x07" % sys.argv[1])
@@ -65,14 +65,14 @@ def main():
         time=''
         line = line.strip()
         for b in bad_strings.keys():
-            if b in line:
-                verbose('removing',b)
-                line = line.replace(b,bad_strings[b])
+            line = line.replace(b,bad_strings[b])
+
+        for b in bad_patterns.keys():
+            line = re.sub(b,bad_patterns[b],line)
 
         # Let's try to make stack traces slightly more readable
         if prev_type in ['ERROR', 'SEVERE', 'WARNING'] and ( '.Fault' in line or 'Exception' in line or ('\tat ' in line or ' at ' in line)):
             type = prev_type
-            in_stack = True
             stack_lines += 1
         else:
             stack_lines = 0
