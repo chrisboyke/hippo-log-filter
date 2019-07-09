@@ -10,11 +10,11 @@ Usage:
 
 
 '''
-import sys, re
+import sys, re, os
 from colorama import Fore, Style
 
 VERBOSE = False
-WRITE_UNFILTERED=False
+WRITE_UNFILTERED=True
 MAX_STACK=10
 
 # Try to clean up junk in the log file
@@ -44,18 +44,18 @@ oepattern=r'\[\d\d\d\d-\d\d-\d\dT(\d\d:\d\d\:\d\d,\d\d\d)\]\[(\w+)\s*\]\s*(.*)'
 
 def main():
     print('\n\n' + Fore.GREEN)
-    print('hippo_log_filter.py version 1.2 (https://code.onehippo.org/sandbox/hippo-log-filter)')
-    print('------------------------------------------------------------------------------------\n\n' + Style.RESET_ALL, flush=True)
+    print('hippo_log_filter.py version 1.4 (https://github.com/chrisboyke/hippo-log-filter)')
+    print('--------------------------------------------------------------------------------\n\n' + Style.RESET_ALL, flush=True)
 
     if len(sys.argv) > 1:
         print("\x1B]0;%s\x07" % sys.argv[1])
     if WRITE_UNFILTERED:
-        f = open('log/unfiltered.out','w')
+        f = open(os.path.expanduser('~/log/unfiltered.out'),'w')
 
     prev_type=None
     stack_lines=0
     for line in sys.stdin:
-        verbose('original')
+        verbose('\n\noriginal')
         verbose(line)
         if WRITE_UNFILTERED:
             f.write(line)
@@ -71,7 +71,7 @@ def main():
             line = re.sub(b,bad_patterns[b],line)
 
         # Let's try to make stack traces slightly more readable
-        if prev_type in ['ERROR', 'SEVERE', 'WARNING'] and ( '.Fault' in line or 'Exception' in line or ('\tat ' in line or ' at ' in line)):
+        if prev_type in ['ERROR', 'SEVERE', 'WARNING'] and ( 'Exception' in line or '.Fault' in line or ('\tat ' in line or ' at ' in line)):
             type = prev_type
             stack_lines += 1
         else:
